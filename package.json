@@ -1,7 +1,7 @@
 {
   "name": "react-native-u2f",
   "title": "React Native React Native U2f",
-  "version": "1.0.1",
+  "version": "1.0.2",
   "description": "Simple Wrapper to Android U2f API",
   "main": "index.js",
   "scripts": {
