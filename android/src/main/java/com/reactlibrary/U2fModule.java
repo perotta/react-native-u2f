@@ -7,8 +7,13 @@ import com.facebook.react.bridge.Promise;
 import com.facebook.react.bridge.ReadableArray;
 import com.facebook.react.bridge.ReadableMap;
 import com.facebook.react.bridge.ReadableType;
+import com.facebook.react.bridge.ActivityEventListener;
+import com.facebook.react.bridge.BaseActivityEventListener;
 
 import android.content.IntentSender;
+import android.content.Intent;
+import android.app.Activity;
+import android.util.Log;
 
 import com.google.android.gms.fido.common.Transport;
 import com.google.android.gms.fido.Fido;
@@ -31,18 +36,43 @@ import com.google.android.gms.tasks.Task;
 import java.util.List;
 import java.util.ArrayList;
 
-//import com.google.common.io.BaseEncoding;
-//implementation 'com.google.guava:guava:28.1-android'
+import org.json.JSONObject;
 
 public class U2fModule extends ReactContextBaseJavaModule {
 
     private final ReactApplicationContext reactContext;
+    private static final String TAG = "ReactNativeU2fModule";
     private static final int REQUEST_CODE_REGISTER = 0;
     private static final int REQUEST_CODE_SIGN = 1;
+    private static final String E_SIGN_CANCELLED = "E_SIGN_CANCELLED";
+    private static final String E_ACTIVITY_DOES_NOT_EXIST = "E_ACTIVITY_DOES_NOT_EXIST";
+
+    private Promise mSignPromise;
+
+    private final ActivityEventListener mActivityEventListener = new BaseActivityEventListener() {
+        @Override
+        public void onActivityResult(Activity activity, int requestCode, int resultCode, Intent intent) {
+            if (requestCode == REQUEST_CODE_SIGN) {
+                if (mSignPromise != null) {
+                  if (resultCode == Activity.RESULT_CANCELED) {
+                      mSignPromise.reject(E_SIGN_CANCELLED, "Sign was cancelled");
+                  } else if (resultCode == Activity.RESULT_OK) {
+                      Log.i(TAG, "Received response from Security Key");
+                      ResponseData response = intent.getParcelableExtra(Fido.KEY_RESPONSE_EXTRA);
+                      mSignPromise.resolve(response.toJsonObject().toString());
+                  }
+                }
+                mSignPromise = null;
+            }
+        }
+    };
 
     public U2fModule(ReactApplicationContext reactContext) {
         super(reactContext);
         this.reactContext = reactContext;
+
+        // Add the listener for `onActivityResult`
+        reactContext.addActivityEventListener(mActivityEventListener);
     }
 
     @Override
@@ -52,15 +82,22 @@ public class U2fModule extends ReactContextBaseJavaModule {
 
 
     @ReactMethod
-    public void sign(ReadableArray registeredKeysIN, final Promise promise) {
+    public void nativeSign(ReadableArray registeredKeysIN, final Promise promise) {
+
+        Activity currentActivity = getCurrentActivity();
+
+        if (currentActivity == null) {
+          promise.reject(E_ACTIVITY_DOES_NOT_EXIST, "Activity doesn't exist");
+          return;
+        }
+
+        // Store the promise to resolve/reject when picker returns data
+        mSignPromise = promise;
+
         try{
 
           //This could be specific to each key, but for simplicity purpose it will be standard for every key
           ArrayList<Transport> transports = new ArrayList<Transport>();
-          transports.add(Transport.BLUETOOTH_CLASSIC);
-          transports.add(Transport.BLUETOOTH_LOW_ENERGY);
-          transports.add(Transport.NFC);
-          transports.add(Transport.USB);
 
           SignRequestParams.Builder builder = new SignRequestParams.Builder();
 
@@ -83,8 +120,9 @@ public class U2fModule extends ReactContextBaseJavaModule {
           }
 
           builder.setRegisteredKeys(registeredKeysOUT);
-
           SignRequestParams signRequestParams = builder.build();
+
+          Log.i(TAG, "SignRequestParams built");
 
           U2fApiClient mU2fApiClient = new U2fApiClient(getReactApplicationContext());
           Task<U2fPendingIntent> result = mU2fApiClient.getSignIntent(signRequestParams);
@@ -96,8 +134,8 @@ public class U2fModule extends ReactContextBaseJavaModule {
                       if (mU2fPendingIntent.hasPendingIntent()) {
                           try {
                               mU2fPendingIntent.launchPendingIntent(getCurrentActivity(), REQUEST_CODE_SIGN);
-                              promise.resolve("All seems good");
                           } catch (IntentSender.SendIntentException e) {
+                              Log.i(TAG, "Error launching pending intent for sign request");
                               promise.reject("Error launching pending intent for sign request", e);
                           }
                       }
