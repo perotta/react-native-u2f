@@ -17,14 +17,18 @@ const ReactNativeU2fApi = {
         .then(resultString => {
           const result = JSON.parse(resultString);
           if ("errorCode" in result) {
-            const error = new Error("Security Key responded with errorCode");
+            const msg =
+              "errorMessage" in result
+                ? result.errorMessage
+                : "Security Key responded with errorCode";
+            const error = new Error(msg);
             error.metaData = {
               type: errorNames[result.errorCode],
               code: result.errorCode
             };
             reject(error);
           } else {
-            resolve(JSON.parse(resultString));
+            resolve(resultString);
           }
         })
         .catch(e => {

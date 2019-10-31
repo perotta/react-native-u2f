@@ -35,6 +35,9 @@ import com.google.android.gms.tasks.Task;
 
 import java.util.List;
 import java.util.ArrayList;
+//import java.nio.charset.Charset;
+//import java.nio.charset.StandardCharsets;
+//import com.google.common.io.BaseEncoding;
 
 import org.json.JSONObject;
 
@@ -105,24 +108,33 @@ public class U2fModule extends ReactContextBaseJavaModule {
 
           for( int i = 0; i < registeredKeysIN.size(); i++) {
               ReadableMap key = registeredKeysIN.getMap(i);
-              ProtocolVersion version;
-              if( key.getString("version").equals("U2F_V1") ){
-                  version = ProtocolVersion.V1;
-              } else if( key.getString("version").equals("U2F_V2") ){
-                  version = ProtocolVersion.V2;
-              } else {
-                  version = ProtocolVersion.UNKNOWN;
-              }
+              JSONObject registeredKeysJson = new JSONObject();
+              registeredKeysJson.put("challenge", key.getString("challenge"));
+              registeredKeysJson.put("version", key.getString("version"));
+              registeredKeysJson.put("appId", key.getString("appId"));
+              registeredKeysJson.put("keyHandle", key.getString("keyHandle"));
 
-              KeyHandle keyHandle = new KeyHandle(key.getString("keyHandle").getBytes("UTF-8"),version, transports);
-              RegisteredKey registeredKey = new RegisteredKey(keyHandle, key.getString("challenge"), key.getString("appId"));
+              RegisteredKey registeredKey = RegisteredKey.parseFromJson(registeredKeysJson);
+
               registeredKeysOUT.add(registeredKey);
           }
 
           builder.setRegisteredKeys(registeredKeysOUT);
           SignRequestParams signRequestParams = builder.build();
 
-          Log.i(TAG, "SignRequestParams built");
+          // DEBUGGING
+          /*
+          List<RegisteredKey> registeredKeysDEBUG = signRequestParams.getRegisteredKeys();
+          for( int i = 0; i < registeredKeysDEBUG.size(); i++) {
+            Log.i(TAG, "KEY INFO");
+            Log.i(TAG, "APP ID " + registeredKeysDEBUG.get(i).getAppId() );
+            Log.i(TAG, "CHALLENGE " + registeredKeysDEBUG.get(i).getChallengeValue() );
+            KeyHandle keyHandledebug = registeredKeysDEBUG.get(i).getKeyHandle();
+            Log.i(TAG, "KEY HANDLE " + keyHandledebug.toString() );
+          }
+          */
+          // DEBUGGING
+
 
           U2fApiClient mU2fApiClient = new U2fApiClient(getReactApplicationContext());
           Task<U2fPendingIntent> result = mU2fApiClient.getSignIntent(signRequestParams);
