@@ -1,3 +1,12 @@
+/*
+
+  By using this code you accept the condition below:
+  You assume all risks of the any harm that this code can make to your application.
+  The author does not take any responsability for bug, error or misfunction on this code.
+
+  Use at your own risk.
+
+*/
 package com.reactlibrary;
 
 import com.facebook.react.bridge.ReactApplicationContext;
@@ -15,12 +24,12 @@ import android.content.Intent;
 import android.app.Activity;
 import android.util.Log;
 
-import com.google.android.gms.fido.common.Transport;
 import com.google.android.gms.fido.Fido;
 import com.google.android.gms.fido.u2f.U2fApiClient;
 import com.google.android.gms.fido.u2f.U2fPendingIntent;
 import com.google.android.gms.fido.u2f.api.common.ErrorResponseData;
 import com.google.android.gms.fido.u2f.api.common.RegisterRequestParams;
+import com.google.android.gms.fido.u2f.api.common.RegisterRequest;
 import com.google.android.gms.fido.u2f.api.common.RegisterResponseData;
 import com.google.android.gms.fido.u2f.api.common.ResponseData;
 import com.google.android.gms.fido.u2f.api.common.SignRequestParams;
@@ -48,9 +57,11 @@ public class U2fModule extends ReactContextBaseJavaModule {
     private static final int REQUEST_CODE_REGISTER = 0;
     private static final int REQUEST_CODE_SIGN = 1;
     private static final String E_SIGN_CANCELLED = "E_SIGN_CANCELLED";
+    private static final String E_REGISTER_CANCELLED = "E_REGISTER_CANCELLED";
     private static final String E_ACTIVITY_DOES_NOT_EXIST = "E_ACTIVITY_DOES_NOT_EXIST";
 
     private Promise mSignPromise;
+    private Promise mRegisterPromise;
 
     private final ActivityEventListener mActivityEventListener = new BaseActivityEventListener() {
         @Override
@@ -66,6 +77,17 @@ public class U2fModule extends ReactContextBaseJavaModule {
                   }
                 }
                 mSignPromise = null;
+            } else if (requestCode == REQUEST_CODE_REGISTER) {
+                if (mRegisterPromise != null) {
+                  if (resultCode == Activity.RESULT_CANCELED) {
+                      mRegisterPromise.reject(E_REGISTER_CANCELLED, "Register was cancelled");
+                  } else if (resultCode == Activity.RESULT_OK) {
+                      Log.i(TAG, "Received response from Security Key");
+                      ResponseData response = intent.getParcelableExtra(Fido.KEY_RESPONSE_EXTRA);
+                      mRegisterPromise.resolve(response.toJsonObject().toString());
+                  }
+                }
+                mRegisterPromise = null;
             }
         }
     };
@@ -74,7 +96,6 @@ public class U2fModule extends ReactContextBaseJavaModule {
         super(reactContext);
         this.reactContext = reactContext;
 
-        // Add the listener for `onActivityResult`
         reactContext.addActivityEventListener(mActivityEventListener);
     }
 
@@ -83,9 +104,80 @@ public class U2fModule extends ReactContextBaseJavaModule {
         return "U2f";
     }
 
+    @ReactMethod
+    public void nativeRegister(ReadableArray registerRequestsIN, ReadableArray registeredKeysIN, Double timeoutSeconds, final Promise promise) {
+
+        Activity currentActivity = getCurrentActivity();
+
+        if (currentActivity == null) {
+          promise.reject(E_ACTIVITY_DOES_NOT_EXIST, "Activity doesn't exist");
+          return;
+        }
+
+        // Store the promise to resolve/reject when picker returns data
+        mRegisterPromise = promise;
+
+        try{
+          RegisterRequestParams.Builder builder = new RegisterRequestParams.Builder();
+          ArrayList<RegisterRequest> registerRequestsOUT = new ArrayList<RegisterRequest>();
+
+          for( int i = 0; i < registerRequestsIN.size(); i++) {
+              ReadableMap request = registerRequestsIN.getMap(i);
+              JSONObject registerRequestsJson = new JSONObject();
+              registerRequestsJson.put("challenge", request.getString("challenge"));
+              registerRequestsJson.put("version", request.getString("version"));
+              registerRequestsJson.put("appId", request.getString("appId"));
+              RegisterRequest registerRequest = RegisterRequest.parseFromJson(registerRequestsJson);
+              registerRequestsOUT.add(registerRequest);
+          }
+          builder.setRegisterRequests(registerRequestsOUT);
+
+
+          ArrayList<RegisteredKey> registeredKeysOUT = new ArrayList<RegisteredKey>();
+
+          for( int i = 0; i < registeredKeysIN.size(); i++) {
+              ReadableMap key = registeredKeysIN.getMap(i);
+              JSONObject registeredKeysJson = new JSONObject();
+              registeredKeysJson.put("challenge", key.getString("challenge"));
+              registeredKeysJson.put("version", key.getString("version"));
+              registeredKeysJson.put("appId", key.getString("appId"));
+              registeredKeysJson.put("keyHandle", key.getString("keyHandle"));
+              RegisteredKey registeredKey = RegisteredKey.parseFromJson(registeredKeysJson);
+              registeredKeysOUT.add(registeredKey);
+          }
+
+          builder.setRegisteredKeys(registeredKeysOUT);
+
+
+          builder.setTimeoutSeconds(timeoutSeconds);
+          RegisterRequestParams registerRequestParams = builder.build();
+          U2fApiClient mU2fApiClient = new U2fApiClient(getReactApplicationContext());
+          Task<U2fPendingIntent> result = mU2fApiClient.getRegisterIntent(registerRequestParams);
+
+
+          result.addOnSuccessListener(
+              new OnSuccessListener<U2fPendingIntent>() {
+                  @Override
+                  public void onSuccess(U2fPendingIntent mU2fPendingIntent) {
+                      if (mU2fPendingIntent.hasPendingIntent()) {
+                          try {
+                              mU2fPendingIntent.launchPendingIntent(getCurrentActivity(), REQUEST_CODE_REGISTER);
+                          } catch (IntentSender.SendIntentException e) {
+                              Log.i(TAG, "Error launching pending intent for register request");
+                              promise.reject("Error launching pending intent for register request", e);
+                          }
+                      }
+                  }
+          });
+
+        } catch( Exception e ){
+          promise.reject("REGISTER_FAILED", e);
+        }
+    }
+
 
     @ReactMethod
-    public void nativeSign(ReadableArray registeredKeysIN, final Promise promise) {
+    public void nativeSign(ReadableArray registeredKeysIN, Double timeoutSeconds, final Promise promise) {
 
         Activity currentActivity = getCurrentActivity();
 
@@ -98,9 +190,6 @@ public class U2fModule extends ReactContextBaseJavaModule {
         mSignPromise = promise;
 
         try{
-
-          //This could be specific to each key, but for simplicity purpose it will be standard for every key
-          ArrayList<Transport> transports = new ArrayList<Transport>();
 
           SignRequestParams.Builder builder = new SignRequestParams.Builder();
 
@@ -120,6 +209,7 @@ public class U2fModule extends ReactContextBaseJavaModule {
           }
 
           builder.setRegisteredKeys(registeredKeysOUT);
+          builder.setTimeoutSeconds(timeoutSeconds);
           SignRequestParams signRequestParams = builder.build();
 
           // DEBUGGING
