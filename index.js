@@ -13,6 +13,12 @@ const errorNames = {
 const ReactNativeU2fApi = {
   register: function(registerRequests, registeredKeys, timeout = 60) {
     return new Promise((resolve, reject) => {
+      if (!Array.isArray(registerRequests) || !Array.isArray(registeredKeys)) {
+        reject(
+          new Error("registerRequests and registeredKeys need to be an arrays.")
+        );
+        return;
+      }
       U2f.nativeRegister(registerRequests, registeredKeys, timeout)
         .then(resultString => {
           const result = JSON.parse(resultString);
@@ -43,6 +49,10 @@ const ReactNativeU2fApi = {
   },
   sign: function(registeredKeys, timeout = 60) {
     return new Promise((resolve, reject) => {
+      if (!Array.isArray(registeredKeys)) {
+        reject(new Error("registeredKeys need to be an array."));
+        return;
+      }
       U2f.nativeSign(registeredKeys, timeout)
         .then(resultString => {
           const result = JSON.parse(resultString);
