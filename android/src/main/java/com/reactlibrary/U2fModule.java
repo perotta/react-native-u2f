@@ -1,12 +1,3 @@
-/*
-
-  By using this code you accept the condition below:
-  You assume all risks of the any harm that this code can make to your application.
-  The author does not take any responsability for bug, error or misfunction on this code.
-
-  Use at your own risk.
-
-*/
 package com.reactlibrary;
 
 import com.facebook.react.bridge.ReactApplicationContext;
@@ -15,7 +6,6 @@ import com.facebook.react.bridge.ReactMethod;
 import com.facebook.react.bridge.Promise;
 import com.facebook.react.bridge.ReadableArray;
 import com.facebook.react.bridge.ReadableMap;
-import com.facebook.react.bridge.ReadableType;
 import com.facebook.react.bridge.ActivityEventListener;
 import com.facebook.react.bridge.BaseActivityEventListener;
 
@@ -27,26 +17,18 @@ import android.util.Log;
 import com.google.android.gms.fido.Fido;
 import com.google.android.gms.fido.u2f.U2fApiClient;
 import com.google.android.gms.fido.u2f.U2fPendingIntent;
-import com.google.android.gms.fido.u2f.api.common.ErrorResponseData;
 import com.google.android.gms.fido.u2f.api.common.RegisterRequestParams;
 import com.google.android.gms.fido.u2f.api.common.RegisterRequest;
-import com.google.android.gms.fido.u2f.api.common.RegisterResponseData;
 import com.google.android.gms.fido.u2f.api.common.ResponseData;
 import com.google.android.gms.fido.u2f.api.common.SignRequestParams;
-import com.google.android.gms.fido.u2f.api.common.SignResponseData;
 import com.google.android.gms.fido.u2f.api.common.RegisteredKey;
 import com.google.android.gms.fido.u2f.api.common.KeyHandle;
-import com.google.android.gms.fido.u2f.api.common.ProtocolVersion;
 
-import com.google.android.gms.tasks.OnCompleteListener;
 import com.google.android.gms.tasks.OnSuccessListener;
 import com.google.android.gms.tasks.Task;
 
 import java.util.List;
 import java.util.ArrayList;
-//import java.nio.charset.Charset;
-//import java.nio.charset.StandardCharsets;
-//import com.google.common.io.BaseEncoding;
 
 import org.json.JSONObject;
 
@@ -114,7 +96,6 @@ public class U2fModule extends ReactContextBaseJavaModule {
           return;
         }
 
-        // Store the promise to resolve/reject when picker returns data
         mRegisterPromise = promise;
 
         try{
@@ -186,7 +167,6 @@ public class U2fModule extends ReactContextBaseJavaModule {
           return;
         }
 
-        // Store the promise to resolve/reject when picker returns data
         mSignPromise = promise;
 
         try{

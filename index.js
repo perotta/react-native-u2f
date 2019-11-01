@@ -1,12 +1,3 @@
-/*
-
-  By using this code you accept the condition below:
-  You assume all risks of the any harm that this code can make to your application.
-  The author does not take any responsability for bug, error or misfunction on this code.
-
-  Use at your own risk.
-
-*/
 import { NativeModules } from "react-native";
 
 const { U2f } = NativeModules;
