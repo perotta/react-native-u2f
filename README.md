@@ -11,8 +11,8 @@ There is no implementation for iOS. Feel free to contribute with an iOS native m
 
 Simply install with:
 
-`$ yarn add react-native-u2f`
-or
+`$ yarn add react-native-u2f`  
+or  
 `$ npm install react-native-u2f`
 
 ### React Native before 0.60
@@ -71,7 +71,10 @@ function SampleComponent(props) {
     // ...
     // Call your server to get registered keys info
 
-    //registeredKeys is a collection (array of objects). Each object need to have all these 4 keys (challenge, appId, version and keyHandle)
+    // registeredKeys is a collection (array of objects)
+    // Each object need to have all these 4 keys
+    // (challenge, appId, version and keyHandle)
+
     const registeredKeys_MANDATORY = [
       {
         challenge:
@@ -116,7 +119,9 @@ function SampleComponent(props) {
     // ...
     // Call your server to get register requests and registered keys info
 
-    //registeredKeys is a collection (array of objects). Each object need to have all these 3 keys (challenge, appId, version)
+    // registerRequests is a collection (array of objects)
+    // each object need to have all these 3 keys
+    // (challenge, appId, version)
     const registerRequests_MANDATORY = [
       {
         challenge:
@@ -131,7 +136,7 @@ function SampleComponent(props) {
       // ...
     ];
 
-    const timeout_OPTIONAL = 59; //request timeout in seconds. Optional. Default is 60 seconds
+    const timeout_OPTIONAL = 59; //request timeout in seconds. Default is 60 seconds
 
     u2f
       .register(
