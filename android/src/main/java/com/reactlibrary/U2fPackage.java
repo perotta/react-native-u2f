@@ -1,4 +1,4 @@
-package com.reactlibrary;
+package com.ReactNativeU2f;
 
 import java.util.Arrays;
 import java.util.Collections;
