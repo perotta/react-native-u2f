@@ -1,7 +1,7 @@
 {
   "name": "react-native-u2f",
   "title": "React Native React Native U2f",
-  "version": "1.1.5",
+  "version": "1.1.6",
   "description": "U2F for React Native",
   "main": "index.js",
   "scripts": {
